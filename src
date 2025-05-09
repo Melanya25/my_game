@@ -1,0 +1,8 @@
+dragon-battle/
+├── src/
+│   ├── main.c
+│   ├── dragon.c
+│   └── dragon.h
+├── README.md
+├── Makefile
+└── .gitignore
