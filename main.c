@@ -1,81 +1,39 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include "dragon.h"
-
-#define PORT 8080
-
-void handle_client(int client_socket) {
-    Dragon red, blue;
-    init_dragons(&red, &blue);
-    
-    char buffer[1024] = {0};
-    const char *welcome_msg = "Добро пожаловать в Битву Драконов!\n";
-    send(client_socket, welcome_msg, strlen(welcome_msg), 0);
-    
-    while(1) {
-        // Логика игры здесь
-        char status[512];
-        sprintf(status, "Red: %d HP | Blue: %d HP\n", red.health, blue.health);
-        send(client_socket, status, strlen(status), 0);
-        
-        // ... остальная игровая логика
-        
-        if(check_winner(red, blue)) break;
-        sleep(1);
-    }
-}
+#include "dragon.h"  // Включение заголовочного файла dragon.h
 
 int main() {
-    int server_fd, client_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-    
-    // Создаем сокет
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
-    
-    // Настраиваем сокет
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-    
-    // Привязываем сокет к порту
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-    
-    // Слушаем соединения
-    if (listen(server_fd, 3) < 0) {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
-    
-    printf("Сервер запущен на порту %d\n", PORT);
-    
-    while(1) {
-        // Принимаем новое соединение
-        if ((client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
+    srand(time(0)); // Инициализация генератора случайных чисел на основе текущего времени.
+
+    Dragon red, blue; // Объявление двух структур Dragon: red (красный дракон) и blue (синий дракон)
+    init_dragons(&red, &blue); // Вызов функции для инициализации параметров красного и синего драконов
+
+    printf("Dragon Battle Begins!\n"); 
+    printf("Red Dragon vs Blue Dragon\n\n"); 
+
+    int round = 1; // Инициализация переменной round (номер раунда) значением 1
+    int winner = 0; // Флаг победителя: 0 - нет победителя, 1 - битва завершена
+
+    // Основной цикл битвы
+    while (!winner) { // Цикл продолжается до тех пор, пока winner равен 0 
+        printf("=== Round %d ===\n", round++);
+
+        // Красный дракон атакует первым
+        dragon_attack(&red, &blue); // Вызов функции, чтобы красный дракон атаковал синего дракона
+        winner = check_winner(red, blue); // Проверка, есть ли победитель после атаки красного дракона.
+                                             
+        print_status(red, blue); // Вывод текущего состояния драконов (здоровье)
+
+        // Синий дракон атакует в ответ (если нет победителя)
+        if (!winner) { // Проверяем, что победителя еще нет
+            dragon_attack(&blue, &red); 
+            winner = check_winner(red, blue); // Проверка, есть ли победитель после атаки синего дракона.
+            print_status(red, blue); // Вывод текущего состояния драконов (здоровье)
         }
-        
-        // Обрабатываем клиента
-        handle_client(client_socket);
-        close(client_socket);
+
+
+        // Пауза между раундами
+        printf("Press Enter to continue...");
+        getchar(); // Ожидание нажатия клавиши Enter.
     }
-    
-    return 0;
+
+    return 0; // Завершение программы
 }
